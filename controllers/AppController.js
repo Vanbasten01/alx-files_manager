@@ -1,5 +1,8 @@
-import dbClient from '../utils/db';
+
+/* eslint-disable import/no-named-as-default */
+/* eslint-disable import/no-unresolved */
 import redisClient from '../utils/redis';
+import dbClient from '../utils/db';
 
 class AppController {
   static async getStatus(req, res) {
