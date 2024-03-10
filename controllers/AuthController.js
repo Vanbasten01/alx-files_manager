@@ -5,28 +5,22 @@ import sha1 from 'sha1';
 
 export default class AuthController {
   static async getConnect(req, res) {
-    console.log(req.headers);
 
     // Extract email and password from the Authorization header
     const authHeader = req.headers['authorization'];
-    console.log(authHeader)
     if (!authHeader || !authHeader.startsWith('Basic ')) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
     const encodedCredentials = authHeader.split(' ')[1];
-    console.log(`${encodedCredentials} fromm encoded`)
     const decodedCredentials = Buffer.from(encodedCredentials, 'base64').toString();
     const [email, password] = decodedCredentials.split(':');
-    console.log(`${email}: ${password}`)
 
     // Find the user associated with the email and password
     const users = dbClient.db.collection('users');
     const password1 = sha1(password);
 
     const user = await users.findOne({ "email": email, "password": password1 });
-
-    console.log(`${user.email} from user`)
   
 
     if (!user) {
@@ -37,7 +31,6 @@ export default class AuthController {
     const token = uuidv4();
 
     // Store the user ID in Redis with the generated token as the key for 24 hours
-    console.log(`${user._id.toString()} here we gooo redis`)
     await redisClient.set(`auth_${token}`, user._id.toString(), 86400)
    
 
