@@ -14,12 +14,12 @@ const insertFile = async (newFile) => {
         // Return the new file with status code 201
         const [{ _id, userId, name, type, isPublic, parentId }] = createdFile.ops;
         const result = {
-            id: _id.toString(),
-            userId,
+            id: _id.toString(), // Convert ObjectId to string for response
+            userId: userId.toString(), // Convert ObjectId to string for response
             name,
             type,
             isPublic,
-            parentId,
+            parentId: parentId === '0' ? 0 : parentId.toString(), // Convert ObjectId to string for response
         };
         return result;
     } catch (error) {
@@ -80,10 +80,10 @@ export default class FilesController {
 
             // Construct the new file document
             const newFile = {
-                userId: ObjectId(userId),
+                userId: userId, // Convert userId to ObjectId
                 name,
                 type,
-                parentId: parentId,
+                parentId: parentId, // Convert parentId to ObjectId
                 isPublic,
                 localPath: type !== 'folder' ? localPath : null
             };
@@ -134,7 +134,7 @@ export default class FilesController {
             const skip = page * limit;
     
             const filesCollection = dbClient.db.collection('files');
-    
+            
             // Check if parentId is provided in the query parameters
             if (!req.query.parentId) {
                 const files = await filesCollection.find({ userId: ObjectId(userId) })
