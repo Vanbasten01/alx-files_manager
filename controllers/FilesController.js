@@ -151,8 +151,8 @@ export default class FilesController {
                 // Rename _id to id and exclude localPath
                 const responseFiles = files.map(file => {
                 delete file.localPath;
-                const { _id, ...fileData } = file;
-                return { id: _id, ...fileData };
+                const { _id, parentId, ...fileData } = file;
+                return { id: _id, parentId: parentId === '0' ? 0 : parentId, ...fileData };
             });
                 return res.json(responseFiles);
             }
@@ -164,8 +164,8 @@ export default class FilesController {
                                                 .toArray();
             const responseFiles = files.map(file => {
                 delete file.localPath;
-                const { _id, ...fileData} = file;
-                return {id: _id, ...fileData}
+                const { _id,parentId, ...fileData} = file;
+                return { id: _id, parentId: parentId === "0" ? 0 : parentId, ...fileData };
             })
             return res.json(responseFiles);
     
