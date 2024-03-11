@@ -98,4 +98,63 @@ export default class FilesController {
             return res.status(500).json({ error: 'Internal server error' });
         }
     }
+
+    static async getShow(req, res) {
+        try {
+            const token = req.header('x-token');
+            if (!token) return res.status(401).json({ error: 'Unauthorized' });
+
+            const userId = await redisClient.get(`auth_${token}`);
+            if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+
+            const fileId = req.params.id;
+        
+            const filesCollection = await dbClient.db.collection('files');
+            const file = await filesCollection.findOne({ _id: ObjectId(fileId), userId: ObjectId(userId) });
+            if (!file) return res.status(404).json({ error: 'Not found' });
+
+            return res.json(file);
+        } catch (error) {
+            console.error(error);
+            return res.status(500).json({ error: 'Internal server error' });
+        }
+    }
+
+    static async getIndex(req, res) {
+        try {
+            const token = req.header('x-token');
+            if (!token) return res.status(401).json({ error: 'Unauthorized' });
+    
+            const userId = await redisClient.get(`auth_${token}`);
+            if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+    
+            const parentId = req.query.parentId || '0'; // Retrieve parentId from query parameters
+            const page = parseInt(req.query.page, 10) || 0;
+            const limit = 20;
+            const skip = page * limit;
+    
+            const filesCollection = dbClient.db.collection('files');
+    
+            // Check if parentId is provided in the query parameters
+            if (!req.query.parentId) {
+                const files = await filesCollection.find({ userId: ObjectId(userId) })
+                                                    .skip(skip)
+                                                    .limit(limit)
+                                                    .toArray();
+                return res.json(files);
+            }
+    
+            // If parentId is provided, return files associated with userId and parentId
+            const files = await filesCollection.find({ userId: ObjectId(userId), parentId: ObjectId(parentId) })
+                                                .skip(skip)
+                                                .limit(limit)
+                                                .toArray();
+            return res.json(files);
+    
+        } catch (error) {
+            console.error(error);
+            return res.status(500).json({ error: 'Internal server error' });
+        }
+    }
+    
 }
