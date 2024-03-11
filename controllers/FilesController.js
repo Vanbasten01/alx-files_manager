@@ -115,8 +115,12 @@ export default class FilesController {
             const filesCollection = await dbClient.db.collection('files');
             const file = await filesCollection.findOne({ _id: ObjectId(fileId), userId: userId });
             if (!file) return res.status(404).json({ error: 'Not found' });
+            // Exclude localPath from the response
+            delete file.localPath;
+            const { _id, ...fileData } = file;
+            const responseFile = { id: _id, ...fileData };
 
-            return res.json(file);
+            return res.json(responseFile);
         } catch (error) {
             console.error(error);
             return res.status(500).json({ error: 'Internal server error' });
@@ -144,7 +148,13 @@ export default class FilesController {
                                                     .skip(skip)
                                                     .limit(limit)
                                                     .toArray();
-                return res.json(files);
+                // Rename _id to id and exclude localPath
+                const responseFiles = files.map(file => {
+                delete file.localPath;
+                const { _id, ...fileData } = file;
+                return { id: _id, ...fileData };
+            });
+                return res.json(responseFiles);
             }
     
             // If parentId is provided, return files associated with userId and parentId
@@ -152,7 +162,12 @@ export default class FilesController {
                                                 .skip(skip)
                                                 .limit(limit)
                                                 .toArray();
-            return res.json(files);
+            const responseFiles = files.map(file => {
+                delete file.localPath;
+                const { _id, ...fileData} = file;
+                return {id: _id, ...fileData}
+            })
+            return res.json(responseFiles);
     
         } catch (error) {
             console.error(error);
