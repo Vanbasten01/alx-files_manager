@@ -39,7 +39,7 @@ export default class FilesController {
             }
 
             // Extract request body parameters
-            const { name, type, parentId = 0, isPublic = false, data } = req.body;
+            const { name, type, parentId = '0', isPublic = false, data } = req.body;
 
             // Validate request parameters
             if (!name) {
@@ -53,7 +53,7 @@ export default class FilesController {
             }
 
             // If parentId is set, validate and find the parent file/folder
-            if (parentId !== 0) {
+            if (parentId !== '0') {
                 const parentFile = await dbClient.db.collection('files').findOne({ _id: ObjectId(parentId) });
                 if (!parentFile) {
                     return res.status(400).json({ error: 'Parent not found' });
