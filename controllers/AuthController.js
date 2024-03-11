@@ -14,6 +14,7 @@ export default class AuthController {
     const encodedCredentials = authHeader.split(' ')[1];
     const decodedCredentials = Buffer.from(encodedCredentials, 'base64').toString();
     const [email, password] = decodedCredentials.split(':');
+    if (!email || !password) return res.status(401).json({ error: 'Unauthorized' });
 
     // Find the user associated with the email and password
     const users = dbClient.db.collection('users');
