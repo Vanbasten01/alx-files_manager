@@ -10,7 +10,7 @@ const insertFile = async (newFile) => {
         // Insert the new file document into the database
         const files = await dbClient.db.collection('files');
         const createdFile = await files.insertOne(newFile);
-
+        if (createdFile.result.ok === 1 && createdFile.ops.length > 0) {
         // Return the new file with status code 201
         const [{ _id, userId, name, type, isPublic, parentId }] = createdFile.ops;
         const result = {
@@ -20,8 +20,10 @@ const insertFile = async (newFile) => {
             type,
             isPublic,
             parentId: parentId === '0' ? 0 : parentId.toString(), // Convert ObjectId to string for response
-        };
+        }
         return result;
+    }
+       
     } catch (error) {
         throw new Error(`Error inserting file into database: ${error.message}`);
     }
@@ -66,6 +68,7 @@ export default class FilesController {
             // Store the file locally and retrieve the local path
             let localPath = '';
             if (type !== 'folder') {
+                console.log('here i m ')
                 // Determine the folder path based on the environment variable or use the default path
                 const folderPath = process.env.FOLDER_PATH || '/tmp/files_manager';
                 // Ensure the directory exists, create if it doesn't
@@ -137,7 +140,7 @@ export default class FilesController {
             
             // Check if parentId is provided in the query parameters
             if (!req.query.parentId) {
-                const files = await filesCollection.find({ userId: ObjectId(userId) })
+                const files = await filesCollection.find({ userId: userId })
                                                     .skip(skip)
                                                     .limit(limit)
                                                     .toArray();
@@ -145,7 +148,7 @@ export default class FilesController {
             }
     
             // If parentId is provided, return files associated with userId and parentId
-            const files = await filesCollection.find({ userId: ObjectId(userId), parentId: ObjectId(parentId) })
+            const files = await filesCollection.find({ userId: userId, parentId: parentId })
                                                 .skip(skip)
                                                 .limit(limit)
                                                 .toArray();
