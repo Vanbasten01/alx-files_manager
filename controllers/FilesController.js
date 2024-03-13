@@ -14,12 +14,12 @@ const insertFile = async (newFile) => {
         // Return the new file with status code 201
         const [{ _id, userId, name, type, isPublic, parentId }] = createdFile.ops;
         const result = {
-            id: _id.toString(), // Convert ObjectId to string for response
-            userId: userId.toString(), // Convert ObjectId to string for response
+            id: _id, // Convert ObjectId to string for response
+            userId: userId, // Convert ObjectId to string for response
             name,
             type,
             isPublic,
-            parentId: parentId === '0' ? 0 : parentId.toString(), // Convert ObjectId to string for response
+            parentId: parentId// Convert ObjectId to string for response
         }
         return result;
     }
@@ -41,8 +41,13 @@ export default class FilesController {
             }
 
             // Extract request body parameters
-            const { name, type, parentId = '0', isPublic = false, data } = req.body;
-
+            const { name } = req.body;
+            const { type } = req.body;
+            let { parentId } = req.body;
+            const { isPublic } = req.body;
+            const { data } = req.body;
+            const types = ['folder', 'file', 'image'];
+      
             // Validate request parameters
             if (!name) {
                 return res.status(400).json({ error: 'Missing name' });
@@ -53,9 +58,9 @@ export default class FilesController {
             if (type !== 'folder' && !data) {
                 return res.status(400).json({ error: 'Missing data' });
             }
-
+            if (!parentId) { parentId = 0}
             // If parentId is set, validate and find the parent file/folder
-            if (parentId !== '0') {
+            if (parentId !== 0) {
                 const parentFile = await dbClient.db.collection('files').findOne({ _id: ObjectId(parentId) });
                 if (!parentFile) {
                     return res.status(400).json({ error: 'Parent not found' });
@@ -83,10 +88,10 @@ export default class FilesController {
 
             // Construct the new file document
             const newFile = {
-                userId: userId, // Convert userId to ObjectId
+                userId: ObjectId(userId), // Convert userId to ObjectId
                 name,
                 type,
-                parentId: parentId, // Convert parentId to ObjectId
+                parentId: parentId !== 0 ? ObjectId(parentId) : 0, // Convert parentId to ObjectId
                 isPublic,
                 localPath: type !== 'folder' ? localPath : null
             };
