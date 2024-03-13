@@ -93,77 +93,52 @@ export default class FilesController {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
-    static async getShow(req, res) {
-        const key = req.header('X-Token');
-        const session = await redisClient.get(`auth_${key}`);
-        if (!key || key.length === 0) {
-          return res.status(401).json({ error: 'Unauthorized' });
-        }
-        if (session) {
-          const { id } = req.params;
-          const search = await dbClient.db.collection('files').find({ _id: ObjectId(id) }).toArray();
-          if (!search || search.length < 1) {
-            return res.status(404).json({ error: 'Not found' });
-          }
-          return (res.json({
-            id: search[0]._id,
-            userId: search[0].userId,
-            name: search[0].name,
-            type: search[0].type,
-            isPublic: search[0].isPublic,
-            parentId: search[0].parentId,
-          }));
-        }
-        return res.status(401).json({ error: 'Unauthorized' });
-      }
-    
-
-    static async getIndex(req, res) {
-        try {
-            const token = req.header('x-token');
-            if (!token) return res.status(401).json({ error: 'Unauthorized' });
-    
-            const userId = await redisClient.get(`auth_${token}`);
-            if (!userId) return res.status(401).json({ error: 'Unauthorized' });
-    
-            const parentId = req.query.parentId || '0'; // Retrieve parentId from query parameters
-            const page = parseInt(req.query.page, 10) || 0;
-            const limit = 20;
-            const skip = page * limit;
-    
-            const filesCollection = dbClient.db.collection('files');
-            
-            // Check if parentId is provided in the query parameters
-            if (!req.query.parentId) {
-                const files = await filesCollection.find({ userId: userId })
-                                                    .skip(skip)
-                                                    .limit(limit)
-                                                    .toArray();
-                // Rename _id to id and exclude localPath
-                const responseFiles = files.map(file => {
-                delete file.localPath;
-                const { _id, parentId, ...fileData } = file;
-                return { id: _id, parentId: parentId === '0' ? 0 : parentId, ...fileData };
-            });
-                return res.json(responseFiles);
-            }
-    
-            // If parentId is provided, return files associated with userId and parentId
-            const files = await filesCollection.find({ userId: userId, parentId: parentId })
-                                                .skip(skip)
-                                                .limit(limit)
-                                                .toArray();
-            const responseFiles = files.map(file => {
-                delete file.localPath;
-                const { _id,parentId, ...fileData} = file;
-                return { id: _id, parentId: parentId === "0" ? 0 : parentId, ...fileData };
-            })
-            return res.json(responseFiles);
-    
-        } catch (error) {
-            console.error(error);
-            return res.status(500).json({ error: 'Internal server error' });
-        }
+  static async getShow(req, res) {
+    const key = req.header('X-Token');
+    const session = await redisClient.get(`auth_${key}`);
+    if (!key || key.length === 0) {
+      return res.status(401).json({ error: 'Unauthorized' });
     }
+    if (session) {
+      const { id } = req.params;
+      const search = await dbClient.db.collection('files').find({ _id: ObjectId(id) }).toArray();
+      if (!search || search.length < 1) {
+        return res.status(404).json({ error: 'Not found' });
+      }
+      return (res.json({
+        id: search[0]._id,
+        userId: search[0].userId,
+        name: search[0].name,
+        type: search[0].type,
+        isPublic: search[0].isPublic,
+        parentId: search[0].parentId,
+      }));
+    }
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
+  static async getIndex(req, res) {
+    const key = req.header('X-Token');
+    const session = await redisClient.get(`auth_${key}`);
+    if (!key || key.length === 0) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+    if (session) {
+      let { parentId } = req.query;
+      if (!parentId) { parentId = '0'; }
+      if (parentId === '0') {
+        const search = await dbClient.db.collection('files').find({ parentId: parseInt(parentId, 10) }).toArray();
+        if (search) {
+          return res.status(200).send(search);
+        }
+      } else if (parentId !== 0) {
+        const search = await dbClient.db.collection('files').find({ parentId: ObjectId(parentId) }).toArray();
+        if (search) {
+          return res.status(200).send(search);
+        }
+      }
+    }
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
     
 }
