@@ -1,13 +1,14 @@
-import dbClient from "../utils/db";
-import redisClient from "../utils/redis";
-import { v4 as uuidv4 } from 'uuid';
 import { ObjectId } from 'mongodb';
-import fs from 'fs';
+import { v4 as uuidv4 } from 'uuid';
 
+import  fs from 'fs';
+import  mime  from 'mime-types';
+import dbClient  from '../utils/db';
+import  redisClient  from '../utils/redis';
 
 export default class FilesController {
-    static async postUpload(req, res) {
-        const key = req.header('X-Token');
+  static async postUpload(req, res) {
+    const key = req.header('X-Token');
     const session = await redisClient.get(`auth_${key}`);
     if (!key || key.length === 0) {
       return res.status(401).json({ error: 'Unauthorized' });
@@ -140,5 +141,144 @@ export default class FilesController {
     }
     return res.status(401).json({ error: 'Unauthorized' });
   }
-    
+
+  static async putPublish(req, res) {
+    const key = req.header('X-Token');
+    const session = await redisClient.get(`auth_${key}`);
+    if (!key || key.length === 0) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+    if (session) {
+      const { id } = req.params;
+      if (!id || id === '') {
+        return res.status(401).json({ error: 'Unauthorized' });
+      }
+      let search = [];
+      try {
+        search = await dbClient.db.collection('files').find({ _id: ObjectId(id), userId: ObjectId(session) }).toArray();
+      } catch (e) {
+        return (res.status(404).json({ error: 'Not found' }));
+      }
+      if (!search || search.length < 1) {
+        return (res.status(404).json({ error: 'Not found' }));
+      }
+      await dbClient.db.collection('files').updateOne({ _id: ObjectId(id) }, { $set: { isPublic: true } });
+      const search1 = await dbClient.db.collection('files').find({ _id: ObjectId(id), userId: ObjectId(session) }).toArray();
+      if (!search1 || search1.length < 1) {
+        return (res.status(404).json({ error: 'Not found' }));
+      }
+      return res.status(200).json({
+        id: search1[0]._id,
+        userId: search1[0].userId,
+        name: search1[0].name,
+        type: search1[0].type,
+        isPublic: search1[0].isPublic,
+        parentId: search1[0].parentId,
+      });
+    }
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
+  static async putUnpublish(req, res) {
+    const key = req.header('X-Token');
+    const session = await redisClient.get(`auth_${key}`);
+    if (!key || key.length === 0) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+    if (session) {
+      const { id } = req.params;
+      if (!id || id === '') {
+        return res.status(401).json({ error: 'Unauthorized' });
+      }
+      let search = [];
+      try {
+        search = await dbClient.db.collection('files').find({ _id: ObjectId(id), userId: ObjectId(session) }).toArray();
+      } catch (e) {
+        return (res.status(404).json({ error: 'Not found' }));
+      }
+      if (!search || search.length < 1) {
+        return (res.status(404).json({ error: 'Not found' }));
+      }
+      await dbClient.db.collection('files').updateOne({ _id: ObjectId(id) }, { $set: { isPublic: false } });
+      const search1 = await dbClient.db.collection('files').find({ _id: ObjectId(id), userId: ObjectId(session) }).toArray();
+      if (!search1 || search1.length < 1) {
+        return (res.status(404).json({ error: 'Not found' }));
+      }
+      return res.status(200).json({
+        id: search1[0]._id,
+        userId: search1[0].userId,
+        name: search1[0].name,
+        type: search1[0].type,
+        isPublic: search1[0].isPublic,
+        parentId: search1[0].parentId,
+      });
+    }
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
+  static async getFile(req, res) {
+    const { id } = req.params;
+    if (!id || id === '') {
+      return res.status(404).json({ error: 'Not found' });
+    }
+    let search = [];
+    try {
+      search = await dbClient.db.collection('files').find({ _id: ObjectId(id) }).toArray();
+    } catch (e) {
+      return (res.status(404).json({ error: 'Not found' }));
+    }
+    if (!search || search.length < 1) {
+      return (res.status(404).json({ error: 'Not found' }));
+    }
+    if (search[0].type === 'folder') {
+      return res.status(400).json({ error: 'A folder doesn\'t have content' });
+    }
+    if (search[0].isPublic === false) {
+      const key = req.header('X-Token');
+      const session = await redisClient.get(`auth_${key}`);
+      if (!key || key.length === 0) {
+        return res.status(404).json({ error: 'Not found' });
+      }
+      if (session) {
+        let search1 = [];
+        try {
+          search1 = await dbClient.db.collection('files').find({ _id: ObjectId(id), userId: ObjectId(session) }).toArray();
+        } catch (e) {
+          return (res.status(404).json({ error: 'Not found' }));
+        }
+        if (!search1 || search1.length < 1) {
+          return (res.status(404).json({ error: 'Not found' }));
+        }
+        if (!fs.existsSync(search1[0].localPath)) {
+          return res.status(404).json({ error: 'Not found' });
+        }
+
+        const type = mime.contentType(search1[0].name);
+        const charset = type.split('=')[1];
+        try {
+          const data = fs.readFileSync(search1[0].localPath, charset);
+          return res.send(data);
+        } catch (e) {
+          return (res.status(404).json({ error: 'Not found' }));
+        }
+      }
+      return res.status(404).json({ error: 'Not found' });
+    }
+
+    const search2 = await dbClient.db.collection('files').find({ _id: ObjectId(id) }).toArray();
+    if (!search2 || search2.length < 1) {
+      return (res.status(404).json({ error: 'Not found' }));
+    }
+    if (!fs.existsSync(search2[0].localPath)) {
+      return res.status(404).json({ error: 'Not found' });
+    }
+    const type = mime.contentType(search2[0].name);
+    const charset = type.split('=')[1];
+    try {
+      const data = fs.readFileSync(search2[0].localPath, charset);
+      return res.send(data);
+    } catch (e) {
+      return (res.status(404).json({ error: 'Not found' }));
+    }
+  }
 }
